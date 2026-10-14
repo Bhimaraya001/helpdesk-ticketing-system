@@ -1,11 +1,10 @@
 
 import { useState } from "react";
 import "../styles.css";
-import initialTickets from "../data/initialTickets";
 import TicketTable from "../components/TicketTable";
 
 function Dashboard() {
-  const [tickets] = useState(initialTickets);
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("All");
