@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -17,8 +16,27 @@ import MyTickets from "./pages/MyTickets";
 import initialTickets from "./data/initialTickets";
 import "./styles.css";
 
+const STORAGE_KEY = "helpdesk-tickets";
+
 function App() {
-  const [tickets, setTickets] = useState(initialTickets);
+  const [tickets, setTickets] = useState(() => {
+    try {
+      const savedTickets = localStorage.getItem(STORAGE_KEY);
+      return savedTickets ? JSON.parse(savedTickets) : initialTickets;
+    } catch (error) {
+      console.error("Could not load saved tickets:", error);
+      return initialTickets;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+    } catch (error) {
+      console.error("Could not save tickets:", error);
+      alert("Storage is full. Try removing some large image attachments.");
+    }
+  }, [tickets]);
 
   return (
     <BrowserRouter>
@@ -29,11 +47,11 @@ function App() {
 
         <Route
           path="/admin"
-          element={<Dashboard tickets={tickets} />}
+          element={<Dashboard tickets={tickets} setTickets={setTickets} />}
         />
         <Route
           path="/admin/tickets"
-          element={<Dashboard tickets={tickets} />}
+          element={<Dashboard tickets={tickets} setTickets={setTickets} />}
         />
         <Route
           path="/admin/reports"
@@ -55,17 +73,11 @@ function App() {
         <Route
           path="/customer/create-ticket"
           element={
-            <CreateTicket
-              tickets={tickets}
-              setTickets={setTickets}
-            />
+            <CreateTicket tickets={tickets} setTickets={setTickets} />
           }
         />
 
-        <Route
-          path="*"
-          element={<Navigate to="/admin" replace />}
-        />
+        <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     </BrowserRouter>
   );

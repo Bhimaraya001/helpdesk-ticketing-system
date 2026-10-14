@@ -1,16 +1,27 @@
-
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import "../styles.css";
 
 const MAX_PHOTOS = 2;
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_FILE_SIZE = 1 * 1024 * 1024;
 const MAX_DESCRIPTION = 300;
+
+function readImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({
+      name: file.name,
+      type: file.type,
+      url: reader.result,
+    });
+    reader.onerror = () => reject(new Error("Could not read the selected image."));
+    reader.readAsDataURL(file);
+  });
+}
 
 function CreateTicket({ tickets, setTickets }) {
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
 
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
@@ -19,7 +30,7 @@ function CreateTicket({ tickets, setTickets }) {
   const [photos, setPhotos] = useState([]);
   const [error, setError] = useState("");
 
-  function handlePhotoChange(event) {
+  async function handlePhotoChange(event) {
     const selectedFiles = Array.from(event.target.files || []);
     event.target.value = "";
 
@@ -28,31 +39,31 @@ function CreateTicket({ tickets, setTickets }) {
       return;
     }
 
-    const validPhotos = [];
-
     for (const file of selectedFiles) {
-      if (!file.type.startsWith("image/")) {
-        setError("Only image files are allowed.");
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        setError("Please upload JPG, PNG, or WebP images only.");
         return;
       }
 
       if (file.size > MAX_FILE_SIZE) {
-        setError("Each photo must be 5 MB or smaller.");
+        setError("Each photo must be 1 MB or smaller.");
         return;
       }
-
-      validPhotos.push(file);
     }
 
-    setPhotos((previous) => [...previous, ...validPhotos]);
-    setError("");
+    try {
+      const savedImages = await Promise.all(selectedFiles.map(readImage));
+      setPhotos((previous) => [...previous, ...savedImages]);
+      setError("");
+    } catch (readError) {
+      setError(readError.message);
+    }
   }
 
   function removePhoto(index) {
     setPhotos((previous) =>
       previous.filter((_, photoIndex) => photoIndex !== index)
     );
-    setError("");
   }
 
   function handleSubmit(event) {
@@ -65,7 +76,7 @@ function CreateTicket({ tickets, setTickets }) {
     }
 
     const newTicket = {
-      id: `HD-${1001 + tickets.length}`,
+      id: `HD-${Date.now()}`,
       subject: subject.trim(),
       customer: "Demo Customer",
       email: "customer@example.com",
@@ -74,14 +85,10 @@ function CreateTicket({ tickets, setTickets }) {
       status: "Open",
       createdAt: new Date().toISOString().slice(0, 10),
       description: description.trim(),
-      photos: photos.map((file) => ({
-        name: file.name,
-        type: file.type,
-        url: URL.createObjectURL(file),
-      })),
+      photos,
     };
 
-    setTickets((previous) => [newTicket, ...previous]);
+    setTickets((previousTickets) => [newTicket, ...previousTickets]);
     navigate("/customer/tickets");
   }
 
@@ -111,23 +118,15 @@ function CreateTicket({ tickets, setTickets }) {
               maxLength={100}
               required
             />
-            <div className="character-count">
-              {subject.length}/100 characters
-            </div>
+            <div className="character-count">{subject.length}/100 characters</div>
 
             <label htmlFor="description">Description</label>
             <textarea
               id="description"
               value={description}
-              onChange={(event) => {
-                setDescription(event.target.value.slice(0, MAX_DESCRIPTION));
-                setError("");
-              }}
-              onPaste={(event) => event.preventDefault()}
-              onCopy={(event) => event.preventDefault()}
-              onCut={(event) => event.preventDefault()}
-              onDrop={(event) => event.preventDefault()}
-              onContextMenu={(event) => event.preventDefault()}
+              onChange={(event) =>
+                setDescription(event.target.value.slice(0, MAX_DESCRIPTION))
+              }
               placeholder="Explain what happened and what you expected."
               rows={5}
               maxLength={MAX_DESCRIPTION}
@@ -136,9 +135,6 @@ function CreateTicket({ tickets, setTickets }) {
             <div className="character-count">
               {description.length}/{MAX_DESCRIPTION} characters
             </div>
-            <p className="muted">
-              Please describe the issue in your own words.
-            </p>
 
             <label htmlFor="category">Category</label>
             <select
@@ -165,15 +161,11 @@ function CreateTicket({ tickets, setTickets }) {
             </select>
 
             <label htmlFor="photos">Attach photos (optional)</label>
-            <p className="muted">
-              Upload 1–2 screenshots or photos. Maximum 5 MB each.
-            </p>
-
+            <p className="muted">Up to 2 JPG, PNG, or WebP images, 1 MB each.</p>
             <input
-              ref={fileInputRef}
               id="photos"
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               multiple
               onChange={handlePhotoChange}
               disabled={photos.length >= MAX_PHOTOS}
@@ -183,10 +175,7 @@ function CreateTicket({ tickets, setTickets }) {
               <div className="photo-preview-grid">
                 {photos.map((photo, index) => (
                   <div className="photo-preview" key={`${photo.name}-${index}`}>
-                    <img
-                      src={URL.createObjectURL(photo)}
-                      alt={`Selected attachment ${index + 1}`}
-                    />
+                    <img src={photo.url} alt={photo.name} />
                     <div className="photo-preview-footer">
                       <span>{photo.name}</span>
                       <button
