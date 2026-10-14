@@ -14,6 +14,7 @@ import PlaceholderPage from "./pages/PlaceholderPage";
 import CreateTicket from "./pages/CreateTicket";
 import MyTickets from "./pages/MyTickets";
 import initialTickets from "./data/initialTickets";
+import AllTickets from "./pages/AllTickets";
 import "./styles.css";
 
 const STORAGE_KEY = "helpdesk-tickets";
@@ -50,9 +51,9 @@ function App() {
           element={<Dashboard tickets={tickets} setTickets={setTickets} />}
         />
         <Route
-          path="/admin/tickets"
-          element={<Dashboard tickets={tickets} setTickets={setTickets} />}
-        />
+  path="/admin/tickets"
+  element={<AllTickets />}
+/>
         <Route
           path="/admin/reports"
           element={<PlaceholderPage title="Reports" />}

@@ -1,5 +1,5 @@
 
-function TicketTable({ tickets }) {
+function TicketTable({ tickets, onStatusChange, updatingId }) {
   return (
     <div className="table-wrapper">
       <table className="ticket-table">
@@ -24,7 +24,7 @@ function TicketTable({ tickets }) {
             tickets.map((ticket) => (
               <tr key={ticket.id}>
                 <td>
-                  <strong>{ticket.id}</strong>
+                  <strong>{ticket.displayId || `HD-${ticket.id}`}</strong>
                 </td>
 
                 <td>
@@ -34,29 +34,49 @@ function TicketTable({ tickets }) {
                   <div className="ticket-customer">
                     {ticket.customer}
                   </div>
+                  <div className="muted">{ticket.email}</div>
                 </td>
 
                 <td>
                   <span
-                    className={`badge priority-${ticket.priority
+                    className={`badge priority-${String(
+                      ticket.priority || "Medium"
+                    )
                       .toLowerCase()
                       .replace(" ", "-")}`}
                   >
-                    {ticket.priority}
+                    {ticket.priority || "Medium"}
                   </span>
                 </td>
 
                 <td>
-                  <span
-                    className={`badge status-${ticket.status
-                      .toLowerCase()
-                      .replace(" ", "-")}`}
-                  >
-                    {ticket.status}
-                  </span>
+                  {onStatusChange ? (
+                    <select
+                      aria-label={`Update status for ${ticket.displayId || ticket.id}`}
+                      value={ticket.status}
+                      disabled={updatingId === ticket.id}
+                      onChange={(event) =>
+                        onStatusChange(ticket.id, event.target.value)
+                      }
+                    >
+                      <option value="Open">Open</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Resolved">Resolved</option>
+                    </select>
+                  ) : (
+                    <span
+                      className={`badge status-${String(
+                        ticket.status || "Open"
+                      )
+                        .toLowerCase()
+                        .replace(" ", "-")}`}
+                    >
+                      {ticket.status || "Open"}
+                    </span>
+                  )}
                 </td>
 
-                <td>{ticket.createdAt}</td>
+                <td>{ticket.createdAt || "—"}</td>
               </tr>
             ))
           )}
