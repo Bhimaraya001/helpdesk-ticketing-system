@@ -1,8 +1,10 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import "../styles.css";
 
+const API_URL = "http://localhost:5000/api/tickets";
 const MAX_PHOTOS = 2;
 const MAX_FILE_SIZE = 1 * 1024 * 1024;
 const MAX_DESCRIPTION = 300;
@@ -10,12 +12,17 @@ const MAX_DESCRIPTION = 300;
 function readImage(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve({
-      name: file.name,
-      type: file.type,
-      url: reader.result,
-    });
-    reader.onerror = () => reject(new Error("Could not read the selected image."));
+
+    reader.onload = () =>
+      resolve({
+        name: file.name,
+        type: file.type,
+        url: reader.result,
+      });
+
+    reader.onerror = () =>
+      reject(new Error("Could not read the selected image."));
+
     reader.readAsDataURL(file);
   });
 }
@@ -29,6 +36,7 @@ function CreateTicket({ tickets, setTickets }) {
   const [priority, setPriority] = useState("Medium");
   const [photos, setPhotos] = useState([]);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   async function handlePhotoChange(event) {
     const selectedFiles = Array.from(event.target.files || []);
@@ -66,7 +74,7 @@ function CreateTicket({ tickets, setTickets }) {
     );
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     setError("");
 
@@ -75,21 +83,69 @@ function CreateTicket({ tickets, setTickets }) {
       return;
     }
 
-    const newTicket = {
-      id: `HD-${Date.now()}`,
-      subject: subject.trim(),
-      customer: "Demo Customer",
-      email: "customer@example.com",
-      category,
-      priority,
-      status: "Open",
-      createdAt: new Date().toISOString().slice(0, 10),
-      description: description.trim(),
-      photos,
-    };
+    if (submitting) return;
 
-    setTickets((previousTickets) => [newTicket, ...previousTickets]);
-    navigate("/customer/tickets");
+    setSubmitting(true);
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subject: subject.trim(),
+          customer: "Demo Customer",
+          email: "customer@example.com",
+          category,
+          priority,
+          description: description.trim(),
+          image_urls: photos.map((photo) => photo.url),
+        }),
+      });
+
+      const savedTicket = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          savedTicket.message || "Could not create ticket."
+        );
+      }
+
+      const newTicket = {
+        id: savedTicket.id,
+        displayId: `HD-${savedTicket.id}`,
+        subject: savedTicket.subject,
+        customer: savedTicket.customer,
+        email: savedTicket.email,
+        category: savedTicket.category,
+        priority: savedTicket.priority,
+        status: savedTicket.status,
+        createdAt: savedTicket.created_at
+          ? savedTicket.created_at.slice(0, 10)
+          : new Date().toISOString().slice(0, 10),
+        description: savedTicket.description,
+        photos: (savedTicket.image_urls || []).map((url, index) => ({
+          name: photos[index]?.name || `attachment-${index + 1}`,
+          type: photos[index]?.type || "image/*",
+          url,
+        })),
+      };
+
+      setTickets((previousTickets) => [
+        newTicket,
+        ...previousTickets,
+      ]);
+
+      navigate("/customer/tickets");
+    } catch (submitError) {
+      setError(
+        submitError.message ||
+          "Unable to connect to the backend. Check that it is running."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -118,14 +174,18 @@ function CreateTicket({ tickets, setTickets }) {
               maxLength={100}
               required
             />
-            <div className="character-count">{subject.length}/100 characters</div>
+            <div className="character-count">
+              {subject.length}/100 characters
+            </div>
 
             <label htmlFor="description">Description</label>
             <textarea
               id="description"
               value={description}
               onChange={(event) =>
-                setDescription(event.target.value.slice(0, MAX_DESCRIPTION))
+                setDescription(
+                  event.target.value.slice(0, MAX_DESCRIPTION)
+                )
               }
               placeholder="Explain what happened and what you expected."
               rows={5}
@@ -161,26 +221,34 @@ function CreateTicket({ tickets, setTickets }) {
             </select>
 
             <label htmlFor="photos">Attach photos (optional)</label>
-            <p className="muted">Up to 2 JPG, PNG, or WebP images, 1 MB each.</p>
+            <p className="muted">
+              Up to 2 JPG, PNG, or WebP images, 1 MB each.
+            </p>
+
             <input
               id="photos"
               type="file"
               accept="image/jpeg,image/png,image/webp"
               multiple
               onChange={handlePhotoChange}
-              disabled={photos.length >= MAX_PHOTOS}
+              disabled={photos.length >= MAX_PHOTOS || submitting}
             />
 
             {photos.length > 0 && (
               <div className="photo-preview-grid">
                 {photos.map((photo, index) => (
-                  <div className="photo-preview" key={`${photo.name}-${index}`}>
+                  <div
+                    className="photo-preview"
+                    key={`${photo.name}-${index}`}
+                  >
                     <img src={photo.url} alt={photo.name} />
+
                     <div className="photo-preview-footer">
                       <span>{photo.name}</span>
                       <button
                         type="button"
                         onClick={() => removePhoto(index)}
+                        disabled={submitting}
                       >
                         Remove
                       </button>
@@ -193,9 +261,14 @@ function CreateTicket({ tickets, setTickets }) {
             {error && <p className="form-error">{error}</p>}
 
             <div className="ticket-form-actions">
-              <button className="customer-create-button" type="submit">
-                Submit Ticket
+              <button
+                className="customer-create-button"
+                type="submit"
+                disabled={submitting}
+              >
+                {submitting ? "Submitting..." : "Submit Ticket"}
               </button>
+
               <Link to="/customer">Cancel</Link>
             </div>
           </form>
