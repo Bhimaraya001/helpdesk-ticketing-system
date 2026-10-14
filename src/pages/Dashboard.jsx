@@ -4,9 +4,29 @@ import "../styles.css";
 import initialTickets from "../data/initialTickets";
 import TicketTable from "../components/TicketTable";
 
-
-function App() {
+function Dashboard() {
   const [tickets] = useState(initialTickets);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
+
+  // Filter tickets based on search, status, and priority
+  const filteredTickets = tickets.filter((ticket) => {
+    const search = searchTerm.toLowerCase().trim();
+
+    const matchesSearch =
+      ticket.subject.toLowerCase().includes(search) ||
+      ticket.customer.toLowerCase().includes(search) ||
+      ticket.email.toLowerCase().includes(search);
+
+    const matchesStatus =
+      statusFilter === "All" || ticket.status === statusFilter;
+
+    const matchesPriority =
+      priorityFilter === "All" || ticket.priority === priorityFilter;
+
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
 
   const stats = [
     {
@@ -16,19 +36,17 @@ function App() {
     },
     {
       title: "Open Tickets",
-      value: tickets.filter((ticket) => ticket.status === "Open").length,
+      value: tickets.filter((t) => t.status === "Open").length,
       description: "Awaiting resolution",
     },
     {
       title: "In Progress",
-      value: tickets.filter(
-        (ticket) => ticket.status === "In Progress"
-      ).length,
+      value: tickets.filter((t) => t.status === "In Progress").length,
       description: "Currently being handled",
     },
     {
       title: "Resolved",
-      value: tickets.filter((ticket) => ticket.status === "Resolved").length,
+      value: tickets.filter((t) => t.status === "Resolved").length,
       description: "Successfully completed",
     },
   ];
@@ -79,14 +97,63 @@ function App() {
         <section className="section-card">
           <h2>Recent Tickets</h2>
           <p className="muted">
-            View the latest customer support requests.
+            Search and filter customer support requests.
           </p>
 
-          <TicketTable tickets={tickets} />
+          <div className="ticket-filters">
+            <input
+              type="search"
+              placeholder="Search subject, customer, or email..."
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              aria-label="Search tickets"
+            />
+
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              aria-label="Filter by status"
+            >
+              <option value="All">All statuses</option>
+              <option value="Open">Open</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+
+            <select
+              value={priorityFilter}
+              onChange={(event) => setPriorityFilter(event.target.value)}
+              aria-label="Filter by priority"
+            >
+              <option value="All">All priorities</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
+            </select>
+
+            <button
+              type="button"
+              className="reset-filters"
+              onClick={() => {
+                setSearchTerm("");
+                setStatusFilter("All");
+                setPriorityFilter("All");
+              }}
+            >
+              Reset
+            </button>
+          </div>
+
+          <p className="muted results-count">
+            Showing {filteredTickets.length} of {tickets.length} tickets
+          </p>
+
+          <TicketTable tickets={filteredTickets} />
         </section>
       </main>
     </div>
   );
 }
 
-export default App;
+export default Dashboard;
