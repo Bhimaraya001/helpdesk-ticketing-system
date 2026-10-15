@@ -1,36 +1,72 @@
-
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import "../styles.css";
 
 const API_URL = "http://localhost:5000/api/tickets";
 
 function Reports() {
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadTickets() {
       try {
-        const response = await fetch(API_URL);
+        const response = await fetch(API_URL, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (response.status === 401) {
+          navigate("/login", { replace: true });
+          return;
+        }
+
+        if (response.status === 403) {
+          throw new Error(
+            "Admin access required. Log in with an account whose database role is ADMIN."
+          );
+        }
 
         if (!response.ok) {
           throw new Error("Could not load report data.");
         }
 
         const data = await response.json();
-        setTickets(data);
+
+        if (!Array.isArray(data)) {
+          throw new Error("The server returned an unexpected ticket list.");
+        }
+
+        if (!cancelled) {
+          setTickets(data);
+          setError("");
+        }
       } catch (err) {
-        setError(err.message || "Unable to connect to the backend.");
+        if (!cancelled) {
+          setError(
+            err.message === "Failed to fetch"
+              ? "Cannot connect to the backend. Make sure it is running on port 5000."
+              : err.message || "Unable to load report data."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     loadTickets();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   const statuses = ["Open", "In Progress", "Resolved"];
   const priorities = ["Urgent", "High", "Medium", "Low"];
@@ -39,13 +75,31 @@ function Reports() {
     return tickets.filter((ticket) => ticket[field] === value).length;
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Use local calendar dates to determine tickets created today.
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(
+    now.getMonth() + 1
+  ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   const createdToday = tickets.filter((ticket) => {
     if (!ticket.created_at) return false;
 
-    return new Date(ticket.created_at).toISOString().slice(0, 10) === today;
+    const created = new Date(ticket.created_at);
+
+    if (Number.isNaN(created.getTime())) return false;
+
+    const createdDate = `${created.getFullYear()}-${String(
+      created.getMonth() + 1
+    ).padStart(2, "0")}-${String(created.getDate()).padStart(2, "0")}`;
+
+    return createdDate === today;
   }).length;
+
+  const resolvedCount = countBy("status", "Resolved");
+
+  const resolutionRate = tickets.length
+    ? Math.round((resolvedCount / tickets.length) * 100)
+    : 0;
 
   return (
     <div className="app-layout">
@@ -70,6 +124,17 @@ function Reports() {
 
         {loading ? (
           <p className="muted">Loading report data...</p>
+        ) : error ? (
+          <section className="section-card">
+            <h2>Reports unavailable</h2>
+            <p className="muted">
+              Statistics could not be calculated because ticket data could
+              not be loaded.
+            </p>
+            <Link className="customer-create-button" to="/admin">
+              Back to Dashboard
+            </Link>
+          </section>
         ) : (
           <>
             <section className="stats-grid">
@@ -90,15 +155,17 @@ function Reports() {
                 <div className="stat-value">
                   {countBy("status", "In Progress")}
                 </div>
-                <div className="stat-description">Currently being handled</div>
+                <div className="stat-description">
+                  Currently being handled
+                </div>
               </article>
 
               <article className="stat-card">
                 <div className="stat-title">Resolved</div>
-                <div className="stat-value">
-                  {countBy("status", "Resolved")}
+                <div className="stat-value">{resolvedCount}</div>
+                <div className="stat-description">
+                  Successfully completed
                 </div>
-                <div className="stat-description">Successfully completed</div>
               </article>
             </section>
 
@@ -172,13 +239,7 @@ function Reports() {
                 <strong>Tickets created today:</strong> {createdToday}
               </p>
               <p>
-                <strong>Resolution rate:</strong>{" "}
-                {tickets.length
-                  ? Math.round(
-                      (countBy("status", "Resolved") / tickets.length) * 100
-                    )
-                  : 0}
-                %
+                <strong>Resolution rate:</strong> {resolutionRate}%
               </p>
 
               <Link className="customer-create-button" to="/admin/tickets">
