@@ -1,4 +1,4 @@
-
+import { Link } from "react-router-dom";
 function TicketTable({ tickets, onStatusChange, updatingId }) {
   return (
     <div className="table-wrapper">
@@ -24,8 +24,10 @@ function TicketTable({ tickets, onStatusChange, updatingId }) {
             tickets.map((ticket) => (
               <tr key={ticket.id}>
                 <td>
-                  <strong>{ticket.displayId || `HD-${ticket.id}`}</strong>
-                </td>
+  <Link to={`/ticket/${ticket.id}`}>
+    {ticket.displayId || `HD-${ticket.id}`}
+  </Link>
+</td>
 
                 <td>
                   <div className="ticket-subject">

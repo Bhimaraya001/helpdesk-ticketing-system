@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import TicketTable from "../components/TicketTable";
+// import { Link } from "react-router-dom";
+
 import "../styles.css";
 
 const API_URL = "http://localhost:5000/api/tickets/mine";
@@ -139,9 +141,14 @@ function MyTickets() {
                         className="ticket-description"
                         key={ticket.id}
                       >
-                        <h3>
-                          {ticket.displayId}: {ticket.subject}
-                        </h3>
+                       
+<h3>
+  <Link to={`/ticket/${ticket.id}`}>
+    {ticket.displayId || `HD-${ticket.id}`}
+  </Link>
+  : {ticket.subject}
+</h3>
+
 
                         <p>{ticket.description}</p>
 

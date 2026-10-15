@@ -251,9 +251,14 @@ function AllTickets() {
                 <div className="ticket-descriptions">
                   {filteredTickets.map((ticket) => (
                     <article className="ticket-description" key={ticket.id}>
-                      <h3>
-                        {ticket.displayId}: {ticket.subject}
-                      </h3>
+                     
+<h3>
+  <Link to={`/ticket/${ticket.id}`}>
+    {ticket.displayId || `HD-${ticket.id}`}
+  </Link>
+  : {ticket.subject}
+</h3>
+
 
                       <p>{ticket.description}</p>
                       <p className="muted">

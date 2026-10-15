@@ -18,6 +18,9 @@ import MyTickets from "./pages/MyTickets";
 import initialTickets from "./data/initialTickets";
 import AllTickets from "./pages/AllTickets";
 import Reports from "./pages/Reports";
+import TicketDetails from "./pages/TicketDetails";
+
+
 import "./styles.css";
 
 const STORAGE_KEY = "helpdesk-tickets";
@@ -89,10 +92,7 @@ function AppRoutes({
   element={<Login onAuthenticated={setUser} />}
 />
 
-<Route
-  path="/signup"
-  element={<Signup onAuthenticated={setUser} />}
-/>
+
 
 
       <Route
@@ -121,6 +121,7 @@ function AppRoutes({
           </RequireAuth>
         }
       />
+      
 
       <Route
         path="/admin/tickets"
@@ -202,6 +203,20 @@ function AppRoutes({
           </RequireAuth>
         }
       />
+       
+<Route
+  path="/ticket/:id"
+  element={
+    <RequireAuth
+      user={user}
+      loading={authLoading}
+      roles={["ADMIN", "CUSTOMER"]}
+    >
+      <TicketDetails />
+    </RequireAuth>
+  }
+/>
+
 
       <Route
         path="*"

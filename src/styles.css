@@ -670,3 +670,91 @@ body {
   font-size: 14px;
   margin: 0;
 }
+
+
+.ticket-details-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.ticket-details-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px 0;
+  color: #1f2937;
+}
+
+.ticket-details-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ticket-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+  margin: 24px 0;
+}
+
+.ticket-details-grid p {
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+
+.ticket-description {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ticket-timeline {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+}
+
+.ticket-timeline-item {
+  display: flex;
+  gap: 14px;
+  position: relative;
+  padding-bottom: 28px;
+}
+
+.timeline-marker {
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+.timeline-content {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.timeline-content h3 {
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+
+.back-button {
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .ticket-details-page {
+    padding: 12px;
+  }
+
+  .ticket-details-card {
+    padding: 16px;
+  }
+}
