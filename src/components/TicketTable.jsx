@@ -54,7 +54,7 @@ function TicketTable({ tickets, onStatusChange, updatingId }) {
                     <select
                       aria-label={`Update status for ${ticket.displayId || ticket.id}`}
                       value={ticket.status}
-                      disabled={updatingId === ticket.id}
+                      disabled={String(updatingId) === String(ticket.id)}
                       onChange={(event) =>
                         onStatusChange(ticket.id, event.target.value)
                       }
@@ -85,5 +85,4 @@ function TicketTable({ tickets, onStatusChange, updatingId }) {
     </div>
   );
 }
-
 export default TicketTable;
