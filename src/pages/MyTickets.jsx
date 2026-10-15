@@ -1,29 +1,45 @@
-
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import TicketTable from "../components/TicketTable";
 import "../styles.css";
 
-const API_URL = "http://localhost:5000/api/tickets";
+const API_URL = "http://localhost:5000/api/tickets/mine";
 
 function MyTickets() {
-  const customerEmail = "customer@example.com";
-
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchTickets() {
       try {
-        const response = await fetch(API_URL);
+        const response = await fetch(API_URL, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (response.status === 401) {
+          navigate("/login", { replace: true });
+          return;
+        }
 
         if (!response.ok) {
-          throw new Error("Could not load tickets from the backend.");
+          throw new Error(
+            response.status === 403
+              ? "Your account does not have customer access."
+              : "Could not load your tickets. Please try again."
+          );
         }
 
         const data = await response.json();
+
+        if (!Array.isArray(data)) {
+          throw new Error("The server returned an unexpected ticket list.");
+        }
 
         const formattedTickets = data.map((ticket) => {
           const imageUrls = Array.isArray(ticket.image_urls)
@@ -35,7 +51,7 @@ function MyTickets() {
             id: ticket.id,
             displayId: `HD-${ticket.id}`,
             createdAt: ticket.created_at
-              ? ticket.created_at.slice(0, 10)
+              ? String(ticket.created_at).slice(0, 10)
               : "",
             photos: imageUrls.map((url, index) => ({
               name: `Attachment ${index + 1}`,
@@ -44,24 +60,31 @@ function MyTickets() {
           };
         });
 
-        setTickets(formattedTickets);
-        setError("");
+        if (!cancelled) {
+          setTickets(formattedTickets);
+          setError("");
+        }
       } catch (err) {
-        setError(
-          err.message ||
-            "Unable to connect to the backend. Make sure it is running."
-        );
+        if (!cancelled) {
+          setError(
+            err.message === "Failed to fetch"
+              ? "Cannot connect to the backend. Make sure it is running on port 5000."
+              : err.message || "Unable to load your tickets."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     fetchTickets();
-  }, []);
 
-  const myTickets = tickets.filter(
-    (ticket) => ticket.email === customerEmail
-  );
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   return (
     <div className="app-layout">
@@ -98,58 +121,65 @@ function MyTickets() {
           {!loading && !error && (
             <>
               <p className="muted">
-                You have {myTickets.length} ticket(s).
+                You have {tickets.length} ticket(s).
               </p>
 
-              <TicketTable tickets={myTickets} />
+              {tickets.length === 0 ? (
+                <p className="muted">
+                  You have not created any tickets yet. Use Create Ticket
+                  to submit your first support request.
+                </p>
+              ) : (
+                <>
+                  <TicketTable tickets={tickets} />
 
-              {myTickets.length > 0 && (
-                <div className="ticket-descriptions">
-                  {myTickets.map((ticket) => (
-                    <article
-                      className="ticket-description"
-                      key={ticket.id}
-                    >
-                      <h3>
-                        {ticket.displayId}: {ticket.subject}
-                      </h3>
+                  <div className="ticket-descriptions">
+                    {tickets.map((ticket) => (
+                      <article
+                        className="ticket-description"
+                        key={ticket.id}
+                      >
+                        <h3>
+                          {ticket.displayId}: {ticket.subject}
+                        </h3>
 
-                      <p>{ticket.description}</p>
+                        <p>{ticket.description}</p>
 
-                      <p className="muted">
-                        Category: {ticket.category}
-                      </p>
+                        <p className="muted">
+                          Category: {ticket.category}
+                        </p>
 
-                      <p className="muted">
-                        Priority: {ticket.priority}
-                      </p>
+                        <p className="muted">
+                          Priority: {ticket.priority}
+                        </p>
 
-                      <p className="muted">
-                        Status: {ticket.status}
-                      </p>
+                        <p className="muted">
+                          Status: {ticket.status}
+                        </p>
 
-                      {ticket.photos?.length > 0 && (
-                        <div className="photo-preview-grid">
-                          {ticket.photos.map((photo, index) => (
-                            <div
-                              className="photo-preview"
-                              key={`${ticket.id}-${index}`}
-                            >
-                              <img
-                                src={photo.url}
-                                alt={`Attachment ${index + 1} for ${ticket.displayId}`}
-                              />
+                        {ticket.photos.length > 0 && (
+                          <div className="photo-preview-grid">
+                            {ticket.photos.map((photo, index) => (
+                              <div
+                                className="photo-preview"
+                                key={`${ticket.id}-${index}`}
+                              >
+                                <img
+                                  src={photo.url}
+                                  alt={`Attachment ${index + 1} for ${ticket.displayId}`}
+                                />
 
-                              <div className="photo-preview-footer">
-                                <span>{photo.name}</span>
+                                <div className="photo-preview-footer">
+                                  <span>{photo.name}</span>
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </article>
-                  ))}
-                </div>
+                            ))}
+                          </div>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                </>
               )}
             </>
           )}

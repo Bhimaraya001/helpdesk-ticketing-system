@@ -1,9 +1,11 @@
+
 import { useEffect, useState } from "react";
 import {
   BrowserRouter,
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 
 import Login from "./pages/Login";
@@ -19,8 +21,200 @@ import Reports from "./pages/Reports";
 import "./styles.css";
 
 const STORAGE_KEY = "helpdesk-tickets";
+const API_URL = "http://localhost:5000";
+
+function RequireAuth({ user, loading, roles, children }) {
+  const location = useLocation();
+
+  if (loading) {
+    return <p className="auth-subtitle">Checking your session...</p>;
+  }
+
+  if (!user) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location.pathname }}
+      />
+    );
+  }
+
+  if (roles && !roles.includes(user.role)) {
+    return (
+      <Navigate
+        to={user.role === "ADMIN" ? "/admin" : "/customer"}
+        replace
+      />
+    );
+  }
+
+  return children;
+}
+
+function HomeRedirect({ user, loading }) {
+  if (loading) {
+    return <p className="auth-subtitle">Checking your session...</p>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return (
+    <Navigate
+      to={user.role === "ADMIN" ? "/admin" : "/customer"}
+      replace
+    />
+  );
+}
+
+function AppRoutes({
+  user,
+  setUser,
+  authLoading,
+  tickets,
+  setTickets,
+}) {
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={<HomeRedirect user={user} loading={authLoading} />}
+      />
+
+      
+<Route
+  path="/login"
+  element={<Login onAuthenticated={setUser} />}
+/>
+
+<Route
+  path="/signup"
+  element={<Signup onAuthenticated={setUser} />}
+/>
+
+
+      <Route
+        path="/signup"
+        element={
+          user ? (
+            <Navigate
+              to={user.role === "ADMIN" ? "/admin" : "/customer"}
+              replace
+            />
+          ) : (
+            <Signup onAuthenticated={setUser} />
+          )
+        }
+      />
+
+      <Route
+        path="/admin"
+        element={
+          <RequireAuth
+            user={user}
+            loading={authLoading}
+            roles={["ADMIN"]}
+          >
+            <Dashboard tickets={tickets} setTickets={setTickets} />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/admin/tickets"
+        element={
+          <RequireAuth
+            user={user}
+            loading={authLoading}
+            roles={["ADMIN"]}
+          >
+            <AllTickets />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/admin/reports"
+        element={
+          <RequireAuth
+            user={user}
+            loading={authLoading}
+            roles={["ADMIN"]}
+          >
+            <Reports />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/admin/settings"
+        element={
+          <RequireAuth
+            user={user}
+            loading={authLoading}
+            roles={["ADMIN"]}
+          >
+            <PlaceholderPage title="Settings" />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/customer"
+        element={
+          <RequireAuth
+            user={user}
+            loading={authLoading}
+            roles={["CUSTOMER"]}
+          >
+            <CustomerDashboard tickets={tickets} />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/customer/tickets"
+        element={
+          <RequireAuth
+            user={user}
+            loading={authLoading}
+            roles={["CUSTOMER"]}
+          >
+            <MyTickets tickets={tickets} />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/customer/create-ticket"
+        element={
+          <RequireAuth
+            user={user}
+            loading={authLoading}
+            roles={["CUSTOMER"]}
+          >
+            <CreateTicket
+              tickets={tickets}
+              setTickets={setTickets}
+            />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="*"
+        element={<Navigate to="/" replace />}
+      />
+    </Routes>
+  );
+}
 
 function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   const [tickets, setTickets] = useState(() => {
     try {
       const savedTickets = localStorage.getItem(STORAGE_KEY);
@@ -32,55 +226,57 @@ function App() {
   });
 
   useEffect(() => {
+    let active = true;
+
+    async function checkSession() {
+      try {
+        const response = await fetch(`${API_URL}/api/auth/me`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          if (active) setUser(null);
+          return;
+        }
+
+        const data = await response.json();
+
+        if (active) {
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error("Could not check login session:", error);
+        if (active) setUser(null);
+      } finally {
+        if (active) setAuthLoading(false);
+      }
+    }
+
+    checkSession();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
     } catch (error) {
       console.error("Could not save tickets:", error);
-      alert("Storage is full. Try removing some large image attachments.");
     }
   }, [tickets]);
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/admin" replace />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-
-        <Route
-          path="/admin"
-          element={<Dashboard tickets={tickets} setTickets={setTickets} />}
-        />
-        <Route
-  path="/admin/tickets"
-  element={<AllTickets />}
-/>
-        <Route
-  path="/admin/reports"
-  element={<Reports />}
-/>
-        <Route
-          path="/admin/settings"
-          element={<PlaceholderPage title="Settings" />}
-        />
-
-        <Route
-          path="/customer"
-          element={<CustomerDashboard tickets={tickets} />}
-        />
-        <Route
-          path="/customer/tickets"
-          element={<MyTickets tickets={tickets} />}
-        />
-        <Route
-          path="/customer/create-ticket"
-          element={
-            <CreateTicket tickets={tickets} setTickets={setTickets} />
-          }
-        />
-
-        <Route path="*" element={<Navigate to="/admin" replace />} />
-      </Routes>
+      <AppRoutes
+        user={user}
+        setUser={setUser}
+        authLoading={authLoading}
+        tickets={tickets}
+        setTickets={setTickets}
+      />
     </BrowserRouter>
   );
 }

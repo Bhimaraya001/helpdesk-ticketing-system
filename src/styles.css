@@ -664,3 +664,9 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.auth-error {
+  color: #c62828;
+  font-size: 14px;
+  margin: 0;
+}

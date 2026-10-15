@@ -27,7 +27,7 @@ function readImage(file) {
   });
 }
 
-function CreateTicket({ tickets, setTickets }) {
+function CreateTicket({ setTickets }) {
   const navigate = useNavigate();
 
   const [subject, setSubject] = useState("");
@@ -90,13 +90,12 @@ function CreateTicket({ tickets, setTickets }) {
     try {
       const response = await fetch(API_URL, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           subject: subject.trim(),
-          customer: "Demo Customer",
-          email: "customer@example.com",
           category,
           priority,
           description: description.trim(),
@@ -104,44 +103,51 @@ function CreateTicket({ tickets, setTickets }) {
         }),
       });
 
-      const savedTicket = await response.json();
+      // Read the response body only once.
+      const data = await response.json();
+
+      if (response.status === 401) {
+        navigate("/login", { replace: true });
+        return;
+      }
 
       if (!response.ok) {
-        throw new Error(
-          savedTicket.message || "Could not create ticket."
-        );
+        throw new Error(data.message || "Could not create ticket.");
       }
 
       const newTicket = {
-        id: savedTicket.id,
-        displayId: `HD-${savedTicket.id}`,
-        subject: savedTicket.subject,
-        customer: savedTicket.customer,
-        email: savedTicket.email,
-        category: savedTicket.category,
-        priority: savedTicket.priority,
-        status: savedTicket.status,
-        createdAt: savedTicket.created_at
-          ? savedTicket.created_at.slice(0, 10)
+        id: data.id,
+        displayId: `HD-${data.id}`,
+        subject: data.subject,
+        customer: data.customer,
+        email: data.email,
+        category: data.category,
+        priority: data.priority,
+        status: data.status,
+        createdAt: data.created_at
+          ? data.created_at.slice(0, 10)
           : new Date().toISOString().slice(0, 10),
-        description: savedTicket.description,
-        photos: (savedTicket.image_urls || []).map((url, index) => ({
+        description: data.description,
+        photos: (data.image_urls || []).map((url, index) => ({
           name: photos[index]?.name || `attachment-${index + 1}`,
           type: photos[index]?.type || "image/*",
           url,
         })),
       };
 
-      setTickets((previousTickets) => [
-        newTicket,
-        ...previousTickets,
-      ]);
+      if (typeof setTickets === "function") {
+        setTickets((previousTickets) => [
+          newTicket,
+          ...previousTickets,
+        ]);
+      }
 
       navigate("/customer/tickets");
     } catch (submitError) {
       setError(
-        submitError.message ||
-          "Unable to connect to the backend. Check that it is running."
+        submitError.message === "Failed to fetch"
+          ? "Cannot connect to the backend. Check that it is running."
+          : submitError.message || "Unable to create the ticket."
       );
     } finally {
       setSubmitting(false);
@@ -160,7 +166,9 @@ function CreateTicket({ tickets, setTickets }) {
               Describe your issue and attach screenshots if needed.
             </p>
           </div>
-          <div className="user-avatar">CU</div>
+          <div className="user-avatar" title="Customer account">
+            CU
+          </div>
         </header>
 
         <section className="section-card">
@@ -183,9 +191,7 @@ function CreateTicket({ tickets, setTickets }) {
               id="description"
               value={description}
               onChange={(event) =>
-                setDescription(
-                  event.target.value.slice(0, MAX_DESCRIPTION)
-                )
+                setDescription(event.target.value.slice(0, MAX_DESCRIPTION))
               }
               placeholder="Explain what happened and what you expected."
               rows={5}
@@ -258,7 +264,11 @@ function CreateTicket({ tickets, setTickets }) {
               </div>
             )}
 
-            {error && <p className="form-error">{error}</p>}
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
 
             <div className="ticket-form-actions">
               <button

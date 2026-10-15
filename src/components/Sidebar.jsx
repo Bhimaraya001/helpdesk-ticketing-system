@@ -1,7 +1,12 @@
 
-import { NavLink } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 
-function Sidebar({ role = "ADMIN" }) {
+function Sidebar({ role = "CUSTOMER" }) {
+  const navigate = useNavigate();
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [error, setError] = useState("");
+
   const isCustomer = role === "CUSTOMER";
 
   const links = isCustomer
@@ -16,6 +21,37 @@ function Sidebar({ role = "ADMIN" }) {
         { label: "Reports", path: "/admin/reports" },
         { label: "Settings", path: "/admin/settings" },
       ];
+
+  async function handleLogout() {
+    if (loggingOut) return;
+
+    setLoggingOut(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/auth/logout",
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Could not log out. Please try again.");
+      }
+
+      // Reloading clears the previous React authentication state.
+      window.location.replace("/login");
+    } catch (err) {
+      setError(
+        err.message === "Failed to fetch"
+          ? "Cannot connect to the backend. Please check that it is running."
+          : err.message
+      );
+      setLoggingOut(false);
+    }
+  }
 
   return (
     <aside className="sidebar">
@@ -37,6 +73,23 @@ function Sidebar({ role = "ADMIN" }) {
           {link.label}
         </NavLink>
       ))}
+
+      <div className="nav-label">Account</div>
+
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
+        </p>
+      )}
+
+      <button
+        type="button"
+        className="nav-item"
+        onClick={handleLogout}
+        disabled={loggingOut}
+      >
+        {loggingOut ? "Logging out..." : "Logout"}
+      </button>
     </aside>
   );
 }

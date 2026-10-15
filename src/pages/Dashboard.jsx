@@ -1,11 +1,13 @@
-
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
 import "../styles.css";
 
 const API_URL = "http://localhost:5000/api/tickets";
 
 function Dashboard() {
+  const navigate = useNavigate();
+
   const [tickets, setTickets] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -14,53 +16,84 @@ function Dashboard() {
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState(null);
 
-  // Load tickets from PostgreSQL through the backend API.
-  async function fetchTickets() {
-    try {
-      const response = await fetch(API_URL);
-
-      if (!response.ok) {
-        throw new Error("Could not load tickets from the backend.");
-      }
-
-      const data = await response.json();
-
-      const formattedTickets = data.map((ticket) => {
-        const imageUrls = Array.isArray(ticket.image_urls)
-          ? ticket.image_urls
-          : [];
-
-        return {
-          ...ticket,
-          id: ticket.id,
-          displayId: `HD-${ticket.id}`,
-          createdAt: ticket.created_at
-            ? new Date(ticket.created_at).toLocaleDateString()
-            : "",
-          photos: imageUrls.map((url, index) => ({
-            name: `Attachment ${index + 1}`,
-            url,
-          })),
-        };
-      });
-
-      setTickets(formattedTickets);
-      setError("");
-    } catch (err) {
-      setError(
-        err.message ||
-          "Unable to connect. Make sure the backend is running."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  // Load all tickets. The backend permits this only for admins.
   useEffect(() => {
-    fetchTickets();
-  }, []);
+    let cancelled = false;
 
-  // Save status changes to PostgreSQL.
+    async function fetchTickets() {
+      try {
+        const response = await fetch(API_URL, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (response.status === 401) {
+          navigate("/login", { replace: true });
+          return;
+        }
+
+        if (response.status === 403) {
+          throw new Error(
+            "Admin access required. Log in using an account with the ADMIN role."
+          );
+        }
+
+        if (!response.ok) {
+          throw new Error("Could not load tickets from the backend.");
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+          throw new Error("The server returned an unexpected ticket list.");
+        }
+
+        const formattedTickets = data.map((ticket) => {
+          const imageUrls = Array.isArray(ticket.image_urls)
+            ? ticket.image_urls
+            : [];
+
+          return {
+            ...ticket,
+            id: ticket.id,
+            displayId: `HD-${ticket.id}`,
+            createdAt: ticket.created_at
+              ? new Date(ticket.created_at).toLocaleDateString()
+              : "",
+            photos: imageUrls.map((url, index) => ({
+              name: `Attachment ${index + 1}`,
+              url,
+            })),
+          };
+        });
+
+        if (!cancelled) {
+          setTickets(formattedTickets);
+          setError("");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err.message === "Failed to fetch"
+              ? "Cannot connect to the backend. Make sure it is running on port 5000."
+              : err.message || "Unable to load tickets."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchTickets();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
+
+  // Save ticket status changes to PostgreSQL.
   async function updateStatus(ticketId, newStatus) {
     setUpdatingId(ticketId);
     setError("");
@@ -70,6 +103,7 @@ function Dashboard() {
         `${API_URL}/${ticketId}/status`,
         {
           method: "PATCH",
+          credentials: "include",
           headers: {
             "Content-Type": "application/json",
           },
@@ -77,22 +111,34 @@ function Dashboard() {
         }
       );
 
+      if (response.status === 401) {
+        navigate("/login", { replace: true });
+        return;
+      }
+
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || "Could not update ticket status.");
+        throw new Error(
+          result.message ||
+            (response.status === 403
+              ? "Admin access is required to update ticket status."
+              : "Could not update ticket status.")
+        );
       }
 
       setTickets((previousTickets) =>
         previousTickets.map((ticket) =>
-          ticket.id === ticketId
+          String(ticket.id) === String(ticketId)
             ? { ...ticket, status: result.status }
             : ticket
         )
       );
     } catch (err) {
       setError(
-        err.message || "Unable to update ticket status."
+        err.message === "Failed to fetch"
+          ? "Cannot connect to the backend."
+          : err.message || "Unable to update ticket status."
       );
     } finally {
       setUpdatingId(null);
@@ -134,47 +180,23 @@ function Dashboard() {
     },
     {
       title: "In Progress",
-      value: tickets.filter((ticket) => ticket.status === "In Progress").length,
+      value: tickets.filter(
+        (ticket) => ticket.status === "In Progress"
+      ).length,
       description: "Currently being handled",
     },
     {
       title: "Resolved",
-      value: tickets.filter((ticket) => ticket.status === "Resolved").length,
+      value: tickets.filter(
+        (ticket) => ticket.status === "Resolved"
+      ).length,
       description: "Successfully completed",
     },
   ];
 
   return (
     <div className="app-layout">
-      <aside className="sidebar">
-        <div className="brand">
-          Help<span>Desk</span>
-        </div>
-
-        <div className="nav-label">Workspace</div>
-        <Link className="nav-item active" to="/admin">
-          Dashboard
-        </Link>
-        <Link className="nav-item" to="/admin/tickets">
-          All Tickets
-        </Link>
-
-        <div className="nav-label">Management</div>
-        <Link className="nav-item" to="/admin/reports">
-          Reports
-        </Link>
-        <Link className="nav-item" to="/admin/settings">
-          Settings
-        </Link>
-
-        <div className="nav-label">Customer Preview</div>
-        <Link className="nav-item" to="/customer">
-          Customer Dashboard
-        </Link>
-        <Link className="nav-item" to="/customer/tickets">
-          Customer Tickets
-        </Link>
-      </aside>
+      <Sidebar role="ADMIN" />
 
       <main className="main-content">
         <header className="topbar">
@@ -184,7 +206,8 @@ function Dashboard() {
               View customer requests, inspect attachments, and update ticket status.
             </p>
           </div>
-          <div className="user-avatar">SA</div>
+
+          <div className="user-avatar">AD</div>
         </header>
 
         {error && (
@@ -193,15 +216,21 @@ function Dashboard() {
           </div>
         )}
 
-        <section className="stats-grid">
-          {stats.map((stat) => (
-            <article className="stat-card" key={stat.title}>
-              <div className="stat-title">{stat.title}</div>
-              <div className="stat-value">{stat.value}</div>
-              <div className="stat-description">{stat.description}</div>
-            </article>
-          ))}
-        </section>
+        {loading && <p className="muted">Loading dashboard...</p>}
+
+        {!loading && !error && (
+          <section className="stats-grid">
+            {stats.map((stat) => (
+              <article className="stat-card" key={stat.title}>
+                <div className="stat-title">{stat.title}</div>
+                <div className="stat-value">{stat.value}</div>
+                <div className="stat-description">
+                  {stat.description}
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
 
         <section className="section-card">
           <h2>All Support Tickets</h2>
@@ -351,6 +380,18 @@ function Dashboard() {
               </table>
             </div>
           )}
+        </section>
+
+        <section className="section-card">
+          <h2>Customer Preview</h2>
+          <p className="muted">
+            Open the customer-facing pages to review their layout.
+          </p>
+          <div className="customer-action">
+            <Link to="/customer">Customer Dashboard →</Link>
+            {" | "}
+            <Link to="/customer/tickets">Customer Tickets →</Link>
+          </div>
         </section>
       </main>
     </div>
