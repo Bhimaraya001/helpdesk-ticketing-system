@@ -1,10 +1,12 @@
+
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import TicketTable from "../components/TicketTable";
+import API_URL from "../api";
 import "../styles.css";
 
-const API_URL = "http://localhost:5000/api/tickets";
+const TICKETS_API = `${API_URL}/api/tickets`;
 
 function AllTickets() {
   const navigate = useNavigate();
@@ -21,7 +23,7 @@ function AllTickets() {
 
     async function loadTickets() {
       try {
-        const response = await fetch(API_URL, {
+        const response = await fetch(TICKETS_API, {
           method: "GET",
           credentials: "include",
         });
@@ -73,7 +75,7 @@ function AllTickets() {
         if (!cancelled) {
           setError(
             err.message === "Failed to fetch"
-              ? "Cannot connect to the backend. Make sure it is running on port 5000."
+              ? "Cannot connect to the backend. Please check the deployed backend service."
               : err.message || "Unable to connect to the backend."
           );
         }
@@ -96,14 +98,17 @@ function AllTickets() {
     setError("");
 
     try {
-      const response = await fetch(`${API_URL}/${ticketId}/status`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const response = await fetch(
+        `${TICKETS_API}/${ticketId}/status`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
 
       if (response.status === 401) {
         navigate("/login", { replace: true });
@@ -250,20 +255,23 @@ function AllTickets() {
               {filteredTickets.length > 0 && (
                 <div className="ticket-descriptions">
                   {filteredTickets.map((ticket) => (
-                    <article className="ticket-description" key={ticket.id}>
-                     
-<h3>
-  <Link to={`/ticket/${ticket.id}`}>
-    {ticket.displayId || `HD-${ticket.id}`}
-  </Link>
-  : {ticket.subject}
-</h3>
-
+                    <article
+                      className="ticket-description"
+                      key={ticket.id}
+                    >
+                      <h3>
+                        <Link to={`/ticket/${ticket.id}`}>
+                          {ticket.displayId || `HD-${ticket.id}`}
+                        </Link>
+                        : {ticket.subject}
+                      </h3>
 
                       <p>{ticket.description}</p>
+
                       <p className="muted">
                         Category: {ticket.category}
                       </p>
+
                       <p className="muted">
                         Email: {ticket.email}
                       </p>
@@ -285,6 +293,7 @@ function AllTickets() {
                                   alt={`${photo.name} for ${ticket.displayId}`}
                                 />
                               </a>
+
                               <div className="photo-preview-footer">
                                 <span>{photo.name}</span>
                               </div>

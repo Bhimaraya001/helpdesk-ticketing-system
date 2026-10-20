@@ -1,9 +1,11 @@
+
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import API_URL from "../api";
 import "../styles.css";
 
-const API_URL = "http://localhost:5000/api/tickets/mine";
+const TICKETS_API = `${API_URL}/api/tickets/mine`;
 
 function CustomerDashboard() {
   const navigate = useNavigate();
@@ -17,7 +19,7 @@ function CustomerDashboard() {
 
     async function fetchMyTickets() {
       try {
-        const response = await fetch(API_URL, {
+        const response = await fetch(TICKETS_API, {
           method: "GET",
           credentials: "include",
         });
@@ -49,7 +51,7 @@ function CustomerDashboard() {
         if (!cancelled) {
           setError(
             err.message === "Failed to fetch"
-              ? "Cannot connect to the backend. Make sure it is running on port 5000."
+              ? "Cannot connect to the deployed backend. Please try again later."
               : err.message || "Unable to load your tickets."
           );
         }
@@ -113,7 +115,7 @@ function CustomerDashboard() {
           <p className="muted">Loading your ticket statistics...</p>
         )}
 
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
 
         {!loading && !error && (
           <section className="stats-grid customer-stats">

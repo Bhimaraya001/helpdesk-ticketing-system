@@ -3,8 +3,9 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import "../styles.css";
+import API_URL from "../api";
 
-const API_URL = "http://localhost:5000/api/tickets";
+const TICKETS_API = `${API_URL}/api/tickets`;
 const MAX_PHOTOS = 2;
 const MAX_FILE_SIZE = 1 * 1024 * 1024;
 const MAX_DESCRIPTION = 300;
@@ -88,7 +89,7 @@ function CreateTicket({ setTickets }) {
     setSubmitting(true);
 
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch(TICKETS_API, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -103,7 +104,6 @@ function CreateTicket({ setTickets }) {
         }),
       });
 
-      // Read the response body only once.
       const data = await response.json();
 
       if (response.status === 401) {
@@ -146,7 +146,7 @@ function CreateTicket({ setTickets }) {
     } catch (submitError) {
       setError(
         submitError.message === "Failed to fetch"
-          ? "Cannot connect to the backend. Check that it is running."
+          ? "Cannot connect to the deployed backend. Please try again later."
           : submitError.message || "Unable to create the ticket."
       );
     } finally {

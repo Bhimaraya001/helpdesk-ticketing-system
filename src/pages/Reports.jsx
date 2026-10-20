@@ -1,9 +1,11 @@
+
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import API_URL from "../api";
 import "../styles.css";
 
-const API_URL = "http://localhost:5000/api/tickets";
+const TICKETS_API = `${API_URL}/api/tickets`;
 
 function Reports() {
   const navigate = useNavigate();
@@ -16,7 +18,7 @@ function Reports() {
 
     async function loadTickets() {
       try {
-        const response = await fetch(API_URL, {
+        const response = await fetch(TICKETS_API, {
           method: "GET",
           credentials: "include",
         });
@@ -50,7 +52,7 @@ function Reports() {
         if (!cancelled) {
           setError(
             err.message === "Failed to fetch"
-              ? "Cannot connect to the backend. Make sure it is running on port 5000."
+              ? "Cannot connect to the deployed backend. Please try again later."
               : err.message || "Unable to load report data."
           );
         }

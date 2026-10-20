@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import API_URL from "../api";
 import "../styles.css";
 
 function Signup({ onAuthenticated }) {
@@ -23,7 +24,7 @@ function Signup({ onAuthenticated }) {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/signup", {
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -47,7 +48,7 @@ function Signup({ onAuthenticated }) {
     } catch (err) {
       setError(
         err.message === "Failed to fetch"
-          ? "Cannot connect to the backend. Make sure it is running on port 5000."
+          ? "Cannot connect to the deployed backend. Please try again later."
           : err.message || "Unable to create your account."
       );
     } finally {

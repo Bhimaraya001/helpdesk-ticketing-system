@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import API_URL from "../api";
 
 function Sidebar({ role = "CUSTOMER" }) {
   const navigate = useNavigate();
@@ -29,24 +30,20 @@ function Sidebar({ role = "CUSTOMER" }) {
     setError("");
 
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/auth/logout",
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
+      const response = await fetch(`${API_URL}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
 
       if (!response.ok) {
         throw new Error("Could not log out. Please try again.");
       }
 
-      // Reloading clears the previous React authentication state.
       window.location.replace("/login");
     } catch (err) {
       setError(
         err.message === "Failed to fetch"
-          ? "Cannot connect to the backend. Please check that it is running."
+          ? "Cannot connect to the backend. Please check your connection."
           : err.message
       );
       setLoggingOut(false);

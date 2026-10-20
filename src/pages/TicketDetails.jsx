@@ -1,8 +1,9 @@
 
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import API_URL from "../api";
 
-const API_URL = "http://localhost:5000/api/tickets";
+const TICKETS_API = `${API_URL}/api/tickets`;
 
 function formatDate(dateValue) {
   if (!dateValue) return "Date unavailable";
@@ -45,10 +46,10 @@ function TicketDetails() {
 
       try {
         const [ticketResponse, historyResponse] = await Promise.all([
-          fetch(`${API_URL}/${id}`, {
+          fetch(`${TICKETS_API}/${id}`, {
             credentials: "include",
           }),
-          fetch(`${API_URL}/${id}/history`, {
+          fetch(`${TICKETS_API}/${id}/history`, {
             credentials: "include",
           }),
         ]);
@@ -70,7 +71,10 @@ function TicketDetails() {
           );
         }
 
-        if (ticketResponse.status === 404) {
+        if (
+          ticketResponse.status === 404 ||
+          historyResponse.status === 404
+        ) {
           throw new Error("Ticket not found.");
         }
 
@@ -96,7 +100,8 @@ function TicketDetails() {
       } catch (err) {
         if (!cancelled) {
           setError(
-            err.message || "Something went wrong while loading the ticket."
+            err.message ||
+              "Something went wrong while loading the ticket."
           );
         }
       } finally {
@@ -114,8 +119,6 @@ function TicketDetails() {
   }, [id, navigate]);
 
   function getBackPath() {
-    // The existing app stores the signed-in user in App.jsx.
-    // Use browser history first so the user can return to their list.
     return -1;
   }
 
@@ -150,8 +153,7 @@ function TicketDetails() {
   const ticketLabel = ticket.displayId || `HD-${ticket.id}`;
   const description =
     ticket.description || "No description was provided.";
-  const createdAt =
-    ticket.created_at || ticket.createdAt;
+  const createdAt = ticket.created_at || ticket.createdAt;
 
   return (
     <main className="page-container ticket-details-page">
@@ -242,9 +244,7 @@ function TicketDetails() {
                       : "System or unavailable user"}
                   </p>
 
-                  {event.comment && (
-                    <p>{event.comment}</p>
-                  )}
+                  {event.comment && <p>{event.comment}</p>}
                 </div>
               </li>
             ))}

@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import API_URL from "../api";
 import "../styles.css";
 
 function Login({ onAuthenticated }) {
@@ -16,7 +17,7 @@ function Login({ onAuthenticated }) {
     const formData = new FormData(event.currentTarget);
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -44,7 +45,7 @@ function Login({ onAuthenticated }) {
     } catch (err) {
       setError(
         err.message === "Failed to fetch"
-          ? "Cannot connect to the backend. Make sure it is running on port 5000."
+          ? "Cannot connect to the deployed backend. Please try again later."
           : err.message || "Unable to log in. Please try again."
       );
     } finally {
