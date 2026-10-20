@@ -24,7 +24,7 @@ import TicketDetails from "./pages/TicketDetails";
 import "./styles.css";
 
 const STORAGE_KEY = "helpdesk-tickets";
-const API_URL = "http://localhost:5000";
+const API_URL = "https://helpdesk-backend-d8wd.onrender.com";
 
 function RequireAuth({ user, loading, roles, children }) {
   const location = useLocation();
