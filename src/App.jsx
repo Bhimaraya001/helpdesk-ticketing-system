@@ -95,19 +95,12 @@ function AppRoutes({
 
 
 
-      <Route
-        path="/signup"
-        element={
-          user ? (
-            <Navigate
-              to={user.role === "ADMIN" ? "/admin" : "/customer"}
-              replace
-            />
-          ) : (
-            <Signup onAuthenticated={setUser} />
-          )
-        }
-      />
+      
+<Route
+  path="/signup"
+  element={<Signup onAuthenticated={setUser} />}
+/>
+
 
       <Route
         path="/admin"
